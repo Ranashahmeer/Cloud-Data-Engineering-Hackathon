@@ -56,3 +56,62 @@ Each data source has a dedicated AWS Lambda function triggered every minute via 
 | Open Exchange Rates| Pulls forex rates via secure API |
 
 Data is stored in this structured format on S3:
+s3://<bucket>/raw/<source>/YYYY/MM/DD/HHMM.csv
+
+---
+
+### 📨 2. Event Notifications
+
+When new files are added to S3:
+
+- An **SNS** notification is published
+- **SNS** uses message attributes (like `source`) to fan-out to:
+  - `yahoo-finance-queue.fifo`
+  - `coinmarketcap-queue.fifo`
+  - `openexchangerates-queue.fifo`
+
+---
+
+### 🔄 3. Processing Layer
+
+Each queue has a dedicated Lambda consumer which:
+
+- Downloads the respective file from S3
+- Parses and filters the data (e.g., status == success)
+- Transforms the records
+- Inserts into appropriate data sinks:
+
+| Source             | Target Sink   |
+|--------------------|---------------|
+| Yahoo Finance      | ❄️ Snowflake |
+| CoinMarketCap      | 🗂️ Processed S3 |
+| Open Exchange Rates| 🧮 SQL Server |
+
+---
+
+## 🔒 SQL Server Access via Ngrok
+
+To allow AWS Lambda to access a local SQL Server instance (for Open Exchange Rates data):
+
+```bash
+ngrok tcp 1433
+---
+
+## 📦 Lambda Layer Packaging
+
+Creating Lambda Layers was one of the more challenging parts due to native Python package dependencies. Here's how it was done:
+
+### 🧪 Steps
+
+1. Launch an **EC2 instance** using Amazon Linux 2023.
+2. Install required packages using `pip`, including:
+   - `pandas`
+   - `beautifulsoup4`
+   - `yfinance`
+3. Navigate to the `site-packages` directory inside the virtual environment.
+4. Zip the contents of `site-packages`:
+   ```bash
+   cd <path-to-site-packages>
+   zip -r9 lambda-layer.zip .
+
+
