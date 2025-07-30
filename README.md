@@ -92,9 +92,7 @@ Each queue has a dedicated Lambda consumer which:
 ## 🔒 SQL Server Access via Ngrok
 
 Since AWS Lambda functions cannot access local services by default, I used ngrok to publicly expose a locally hosted SQL Server database. This allowed real-time insertions from Lambda without needing complex VPC setups.
-    ```bash
-    ngrok tcp 1433
-    
+
 ---
 
 ## 📦 Lambda Layer Packaging
@@ -113,6 +111,67 @@ Creating Lambda Layers was one of the more challenging parts due to native Pytho
    ```bash
    cd <path-to-site-packages>
    zip -r9 lambda-layer.zip .
+---
+---
+
+## 🔧 How to Deploy
+
+### ✅ Prerequisites
+
+- AWS Account
+- Open Exchange Rates App ID
+- Snowflake account & SQL Server instance (local or cloud)
+
+### 🪜 Deployment Steps
+
+1. **Create S3 Buckets**
+   - One for raw data: `s3://<your-bucket-name>/raw/`
+   - One for processed data: `s3://<your-bucket-name>/processed/`
+
+2. **Deploy Lambda Functions**
+   - One ingestion Lambda per data source (Yahoo, CoinMarketCap, Open Exchange)
+   - One consumer Lambda per SQS queue
+   - Attach required Lambda Layers (for pandas, yfinance, etc.)
+
+3. **Set up EventBridge Triggers**
+   - Create 1-minute rules to invoke each ingestion Lambda
+
+4. **Create SNS Topic**
+   - Name it e.g., `data-pipeline-topic`
+
+5. **Create SQS FIFO Queues**
+   - `yahoo-finance-queue.fifo`
+   - `coinmarketcap-queue.fifo`
+   - `openexchangerates-queue.fifo`
+
+6. **Configure S3 Event Notifications**
+   - For raw uploads, trigger the SNS topic
+
+7. **Subscribe Queues to SNS**
+   - Add filter policies based on message attributes (e.g., `"source": "coinmarketcap"`)
+
+8. **Attach Lambda Consumers to Queues**
+   - Each consumer Lambda listens to its relevant queue
+
+9. **Store Secrets**
+   - Use AWS Secrets Manager or Lambda environment variables for:
+     - Open Exchange Rates App ID
+     - Snowflake credentials
+     - SQL Server connection string
+
+---
+
+## 🎯 Key Learnings
+
+- ✅ Designed and deployed a real-time streaming pipeline using serverless AWS tools
+- ✅ Implemented a scalable ETL system with decoupled architecture
+- ✅ Learned to configure and manage **FIFO queues** for message ordering
+- ✅ Automated data routing using **SNS → SQS** with filtering
+- ✅ Built and packaged Lambda Layers for native Python dependencies
+- ✅ Enabled Lambda to interact with a local SQL Server using **Ngrok**
+- ✅ Managed event orchestration using **EventBridge**, running every minute
+
+
 
 
 
