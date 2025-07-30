@@ -91,10 +91,10 @@ Each queue has a dedicated Lambda consumer which:
 
 ## 🔒 SQL Server Access via Ngrok
 
-To allow AWS Lambda to access a local SQL Server instance (for Open Exchange Rates data):
-
-```bash
-ngrok tcp 1433
+Since AWS Lambda functions cannot access local services by default, I used ngrok to publicly expose a locally hosted SQL Server database. This allowed real-time insertions from Lambda without needing complex VPC setups.
+    ```bash
+    ngrok tcp 1433
+    
 ---
 
 ## 📦 Lambda Layer Packaging
@@ -113,5 +113,6 @@ Creating Lambda Layers was one of the more challenging parts due to native Pytho
    ```bash
    cd <path-to-site-packages>
    zip -r9 lambda-layer.zip .
+
 
 
